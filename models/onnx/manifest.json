@@ -1,0 +1,33 @@
+{
+  "_comment": "Phase-0 model set. SHA-256 enforced by Java Phase0Models; not a signed production bundle.",
+  "yunet": {
+    "path": "onnx/yunet_2023mar_dynamic.onnx",
+    "sha256": "d6b78655ac8d2e5d3186ba1a8a933c5a33aae3a21614996b87489606e2469a71",
+    "source": "opencv_zoo face_detection_yunet_2023mar (MIT), input dims made dynamic"
+  },
+  "minifasnet_s2.7": {
+    "path": "onnx/minifasnet_minifasnetv2_s2.7.onnx",
+    "sha256": "3b6b220dedea9e9ffec5bfd3f85aca6a64dd5ba68b11d7cfefa4af842a9e2511",
+    "source": "minivision Silent-Face-Anti-Spoofing 2.7_80x80_MiniFASNetV2 (Apache-2.0)"
+  },
+  "minifasnet_s4.0": {
+    "path": "onnx/minifasnet_minifasnetv1se_s4.0.onnx",
+    "sha256": "21f7d4e0ca7ccd5e36b6824256d8787bff12d220ff0e602ff7b5c858edbce4d4",
+    "source": "minivision 4_0_0_80x80_MiniFASNetV1SE (Apache-2.0)"
+  },
+  "minifasnet_s2.7_int8": {
+    "path": "onnx/minifasnet_minifasnetv2_s2.7_int8.onnx",
+    "sha256": "62de9892e385ea02a4c6fb5722253664dbf2c3c0e9988d0bf664ad897cd80ee3",
+    "source": "static QDQ S8S8 per-channel, LFW calibration"
+  },
+  "minifasnet_s4.0_int8": {
+    "path": "onnx/minifasnet_minifasnetv1se_s4.0_int8.onnx",
+    "sha256": "175b94bc741ab9f665547a58e1cc9e12d1491fb46c5f4ff53f5f80d80670fa2d",
+    "source": "static QDQ S8S8 per-channel, LFW calibration"
+  },
+  "sface": {
+    "path": "third_party/face_recognition_sface_2021dec.onnx",
+    "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+    "source": "opencv_zoo face_recognition_sface_2021dec (Apache-2.0)"
+  }
+}

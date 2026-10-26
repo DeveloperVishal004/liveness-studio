@@ -1,0 +1,33 @@
+# Actual ./demo.sh output, captured 2026-10-24 on an Apple M1 (macOS), exit status 0.
+# [MOCK] run: simulated inputs, real engine decisions. Kept as a presentation backup; it is a transcript, not new evidence.
+
+Face liveness / capture-binding demo
+  INPUTS ARE SIMULATED: mock SBI device, synthetic face motion, scripted attacks, placeholder PAD model.
+  DECISIONS ARE REAL:   the actual engine: face models on every frame, RS256 signature + certificate
+                        verification, nonce/time binding, replay cache, attribution and lockout policy.
+  NOT real-device validation; says NOTHING about PAD accuracy.
+
+scenario                                              result    engine verdict          why
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+genuine user (session 1)                              RETRY     CAPTURE_UNCERTAIN       placeholder PAD below the conservative 0.80 capture gate: fail-closed retry, never accepted
+genuine user (session 2)                              ACCEPTED  VERIFIED                live stream, valid device signature, fresh nonce, same person, capture inside the time window
+genuine user (session 3)                              RETRY     CAPTURE_UNCERTAIN       placeholder PAD below the conservative 0.80 capture gate: fail-closed retry, never accepted
+attacker replays an earlier signed capture            REJECTED  CHANNEL_INTEGRITY       this exact signed response was already used: replay detected
+response belongs to another request (nonce mismatch)  REJECTED  CHANNEL_INTEGRITY       signed transactionId is not this request's fresh nonce
+signed capture altered in transit                     REJECTED  CHANNEL_INTEGRITY       device signature does not verify: content was altered
+another person injected on the video stream           REJECTED  BINDING_INTEGRITY       face in the signed capture is not the person seen on the stream
+a different person at the capture moment              REJECTED  BINDING_INTEGRITY       face in the signed capture is not the person seen on the stream
+still photo replayed as the live stream               RETRY     STATIC_REPLAY_SUSPECT   no natural motion across frames: still image suspected, capture never started
+device clock 30 s off (non-conforming device)         RETRY     DEVICE_FAULT            signed timestamp outside the capture window: device clock fault, not an attack
+
+Attribution of each rejection (which counter it increments):
+  attacker replays an earlier signed capture            -> CHANNEL (device) integrity counter - the person is not locked out
+  response belongs to another request (nonce mismatch)  -> CHANNEL (device) integrity counter - the person is not locked out
+  signed capture altered in transit                     -> CHANNEL (device) integrity counter - the person is not locked out
+  another person injected on the video stream           -> SUBJECT attack counter (attributable to the person in front of the camera)
+  a different person at the capture moment              -> SUBJECT attack counter (attributable to the person in front of the camera)
+  still photo replayed as the live stream               -> no counter (capture never started; the attempt ends)
+  device clock 30 s off (non-conforming device)         -> device-fault diagnostics only (consumes the attempt)
+
+attacks accepted: 0 of 6    genuine sessions accepted: 1 of 3 (RETRY = placeholder PAD uncertain: fail-closed, never an acceptance)
+raw results: demo-output

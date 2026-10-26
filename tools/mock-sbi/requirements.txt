@@ -1,0 +1,5 @@
+# Python dependencies of the MOCK SBI device (tools/mock-sbi/mock_sbi.py) and research/synthetic_motion.py,
+# as used for the demo (./demo.sh). Pinned to the versions the demo was verified with.
+opencv-python-headless==5.0.0.93
+numpy==2.5.4
+cryptography==50.0.2

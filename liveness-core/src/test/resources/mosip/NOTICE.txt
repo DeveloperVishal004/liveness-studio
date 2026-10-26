@@ -1,0 +1,1 @@
+Face.iso copied unmodified from https://github.com/mosip/mosip-mock-services (MockMDS/Profile/Default/Registration/Face.iso) @ 3d2174d641ab77e2debb3b1227d79f810f7f11a6, licensed MPL-2.0.

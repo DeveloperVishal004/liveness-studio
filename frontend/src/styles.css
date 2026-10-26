@@ -1,0 +1,90 @@
+@import "tailwindcss";
+@import "@fontsource-variable/schibsted-grotesk";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+/* Design tokens. One accent (signal); the three status colours are used ONLY for engine outcomes. */
+@theme {
+  --font-sans: "Schibsted Grotesk Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-abyss: #0a1322;
+  --color-deck: #101c31;
+  --color-raised: #15233b;
+  --color-rule: #223654;
+  --color-rule-strong: #34507a;
+  --color-paper: #e6edf7;
+  --color-slate: #8c9db5;
+  --color-faint: #5f7391;
+  --color-signal: #4fc9da;
+  --color-signal-dim: #1d6f7c;
+  --color-ok: #5cd6a2;
+  --color-warn: #f0b84a;
+  --color-bad: #f27a84;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.75rem;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    margin: 0;
+    background: var(--color-abyss);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  :focus-visible { outline: 2px solid var(--color-signal); outline-offset: 2px; border-radius: var(--radius-sm); }
+  ::selection { background: var(--color-signal-dim); color: var(--color-paper); }
+  button { font: inherit; }
+}
+
+@layer components {
+  .panel { background: var(--color-deck); border: 1px solid var(--color-rule); border-radius: var(--radius-md); }
+  .hairline { border-color: var(--color-rule); }
+  .num { font-variant-numeric: tabular-nums; }
+  .code { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center;
+    min-height: 2.25rem; padding: 0 0.9rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--color-rule-strong); background: var(--color-raised); color: var(--color-paper);
+    font-weight: 550; cursor: pointer; transition: background 120ms, border-color 120ms;
+  }
+  .btn:hover:not(:disabled) { background: #1b2d4a; border-color: var(--color-signal-dim); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--color-signal); border-color: var(--color-signal); color: #04202a; }
+  .btn-primary:hover:not(:disabled) { background: #7adbe8; border-color: #7adbe8; }
+  .btn-quiet { background: transparent; border-color: transparent; color: var(--color-slate); }
+  .btn-quiet:hover:not(:disabled) { color: var(--color-paper); background: var(--color-raised); border-color: var(--color-rule); }
+  .btn-danger:hover:not(:disabled) { border-color: var(--color-bad); color: var(--color-bad); }
+
+  .field {
+    min-height: 2.25rem; padding: 0 0.6rem; border-radius: var(--radius-sm); background: var(--color-abyss);
+    border: 1px solid var(--color-rule-strong); color: var(--color-paper);
+  }
+  .field:focus-visible { outline-offset: 0; }
+}
+
+/* A genuinely running stage gets a slow ring; it stops when the stage finishes (the class is removed). */
+@keyframes ring { 0% { box-shadow: 0 0 0 0 rgb(79 201 218 / 0.55); } 100% { box-shadow: 0 0 0 7px rgb(79 201 218 / 0); } }
+.is-active { animation: ring 1.6s ease-out infinite; }
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.sweep::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(79 201 218 / 0.35), transparent); animation: sweep 1.8s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .is-active, .sweep::after, .animate-spin { animation: none !important; }
+  * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}

@@ -1,0 +1,17 @@
+# Hosted demo only. The real engine needs a camera and cannot run in this container.
+#   docker compose up --build         -> http://127.0.0.1:8080
+# To let other machines on your network reach it, change the published address below to "8080:8080".
+services:
+  studio-demo:
+    build: ./frontend
+    image: liveness-studio-demo:local
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped

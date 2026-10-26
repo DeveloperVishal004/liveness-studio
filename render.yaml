@@ -1,0 +1,14 @@
+# Render Blueprint: hosts the DEMO-ONLY image (static, scripted, no camera, no engine, no stored data).
+# It is NOT the real engine. See docs/deploy/DEPLOYMENT.md for why the engine is not deployed publicly.
+# Untested: needs a git repository connected to Render. Create a Blueprint from this file in the Render dashboard.
+services:
+  - type: web
+    name: liveness-studio-demo
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    healthCheckPath: /healthz
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8080"

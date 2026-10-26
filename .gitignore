@@ -1,0 +1,30 @@
+# --- not source: tools, build output, local runs ---
+.tools/
+**/target/
+**/node_modules/
+frontend/dist/
+frontend/dist-demo/
+demo-output/
+webcam-output/
+.playwright-mcp/
+*.log
+.DS_Store
+tempCodeRunnerFile.sh
+
+# --- research data: contains face images from third-party datasets (not ours to redistribute) ---
+research/
+
+# --- third-party problem statement ---
+*.pdf
+
+# --- local secrets, never commit ---
+.env
+.env.local
+*.pem.secret
+
+# local tool settings
+.claude/
+
+# --- withheld from the public repo: internal research notes, including an issue under private disclosure ---
+docs/phase0/
+docs/phase1/
