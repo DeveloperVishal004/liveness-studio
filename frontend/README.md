@@ -22,7 +22,7 @@ The engine prints `UI_URL=http://127.0.0.1:<port>/#t=<token>`. The token is rand
 fragment, so it is never sent anywhere. Press **Ctrl-C** (or call `POST /api/quit`) to stop; the camera and all
 processes are released.
 
-Demo mode needs no engine at all: `cd frontend && npm run dev`, open the printed address, and choose **Demo**.
+The browser and demo modes need no engine at all: `cd frontend && npm run dev` (Node 20.19+ or 22+), open the printed address.
 
 ### If `npm install` / `npm test` fails with "Cannot find native binding"
 
@@ -33,16 +33,33 @@ machine without saving it, for example on Apple silicon:
 npm install --no-save @rolldown/binding-darwin-arm64@1.2.15
 ```
 
-## Real mode and demo mode
+## The three modes
 
-| | Real engine | Demo |
-|---|---|---|
-| Source | The Java engine on this machine, through the local API | Fixed scripts in `src/lib/demo.ts` |
-| Camera | The engine's own feed (what you see is what is assessed) | None; an optional browser preview for positioning only (not analysed) |
-| Decisions | Produced by the engine's session state machine | Scripted, labelled **Simulated** everywhere |
-| Stored trials | `liveness-studio.trials.v1.real` | `liveness-studio.trials.v1.demo` (never mixed) |
+| | Real engine | This browser | Demo |
+|---|---|---|---|
+| Where it runs | The Java engine on this machine, through the local API | The face models, in this browser tab (ONNX Runtime Web, WebAssembly) | Fixed scripts in `src/lib/demo.ts` |
+| Camera | The engine's own feed | Your camera, only after you press Start; analysed on this device | None (optional positioning preview, not analysed) |
+| Decisions | The engine's session state machine, including the signed capture | A port of the engine's *passive* rules. **No signed capture exists**, so the best result is **Passive checks passed**, never Verified | Scripted, labelled **Simulated** |
+| Uploads | Nothing leaves your machine | **Nothing is uploaded or stored**; models and wasm are static files | Nothing |
+| Hosted site | No | Yes | Yes |
+| Stored trials | `...trials.v1.real` | `...trials.v1.browser` | `...trials.v1.demo` (never mixed) |
 
-The mode is always visible in the header, and demo mode adds a permanent banner.
+The mode is always visible in the header and each mode has its own banner.
+
+### How "This browser" works
+
+`src/engine/` is a port of the Java pipeline: YuNet detection and decoding, the quality gates (face size, light, sharpness),
+MiniFASNet scoring and fusion, the landmark-aligned motion check (affine registration), and the passive session rules
+(3 attack frames reject, median at or above 0.80, motion required, 10 s limit). The models are the same files the Java engine
+loads (`public/models/`); each is checked against the SHA-256 pinned in `models/onnx/manifest.json` before use.
+
+**Parity with the reference** (`npm run build:parity`, local only, needs the research fixtures): on the 20 golden images the browser
+code found the same faces as the Python reference on every image (including three multi-face images), with box and landmark error
+0.00 px and PAD scores within 2e-6. The browser decodes JPEGs and scales video differently from OpenCV, so live scores can differ
+slightly from the Java engine; nothing here is an accuracy figure.
+
+What the browser **cannot** do: the signed-capture checks (signature, certificate chain, nonce, device identity, replay), the
+signed-capture PAD gate, and the stream/capture subject match. Those screens show "unavailable", never "passed".
 
 ## The screens
 

@@ -1,3 +1,4 @@
+import { defaultClientConditions } from 'vite'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -8,6 +9,8 @@ const ENGINE = process.env.ENGINE_URL ?? 'http://127.0.0.1:4810'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // use the runtime build that expects its wasm to be served separately (from /ort/), so it is not bundled a second time
+  resolve: { conditions: ['onnxruntime-web-use-extern-wasm', ...defaultClientConditions] },
   server: {
     port: 5173,
     proxy: {

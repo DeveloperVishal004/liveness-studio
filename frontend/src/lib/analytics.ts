@@ -1,11 +1,12 @@
 import { SCENARIOS, scenarioOf } from './scenarios'
 import type { TrialRecord } from '../types'
 
-export type OutcomeGroup = 'verified' | 'retry' | 'rejected' | 'error' | 'cancelled' // a subset of OutcomeKind: same names
+export type OutcomeGroup = 'verified' | 'passive' | 'retry' | 'rejected' | 'error' | 'cancelled' // a subset of OutcomeKind: same names
 
 export function groupOf(r: Pick<TrialRecord, 'state' | 'unfinished'>): OutcomeGroup {
   if (r.state === 'CANCELLED') return 'cancelled'
   if (r.state === 'VERIFIED') return 'verified'
+  if (r.state === 'PASSIVE_PASSED') return 'passive'
   if (r.state === 'RETRY_PENDING') return 'retry'
   if (r.state === 'REJECTED_ATTACK' || r.state.startsWith('FAILED')) return 'rejected'
   if (r.unfinished) return 'cancelled' // abandoned mid-way: not a decision
@@ -29,6 +30,7 @@ export interface Row {
   label: string
   n: number
   verified: number
+  passive: number
   retry: number
   rejected: number
   error: number
@@ -55,7 +57,7 @@ export const MIN_FOR_P95 = 20
 export const PRELIMINARY_BELOW = 30
 
 export function summarize(records: TrialRecord[]): Summary {
-  const counts: Record<OutcomeGroup, number> = { verified: 0, retry: 0, rejected: 0, error: 0, cancelled: 0 }
+  const counts: Record<OutcomeGroup, number> = { verified: 0, passive: 0, retry: 0, rejected: 0, error: 0, cancelled: 0 }
   const genuine: Rate = { n: 0, accepted: 0 }
   const attack: Rate = { n: 0, accepted: 0 }
   const condition: Rate = { n: 0, accepted: 0 }
@@ -82,8 +84,8 @@ export function summarize(records: TrialRecord[]): Summary {
     }
     const rate = sc.kind === 'genuine' ? genuine : sc.kind === 'attack' ? attack : condition
     rate.n++
-    if (g === 'verified') rate.accepted++
-    const row = scen.get(sc.id) ?? { key: sc.id, label: sc.title, n: 0, verified: 0, retry: 0, rejected: 0, error: 0 }
+    if (g === 'verified' || g === 'passive') rate.accepted++
+    const row = scen.get(sc.id) ?? { key: sc.id, label: sc.title, n: 0, verified: 0, passive: 0, retry: 0, rejected: 0, error: 0 }
     row.n++
     row[g]++
     scen.set(sc.id, row)

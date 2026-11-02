@@ -82,9 +82,9 @@ export function ResultCard({ snapshot }: { snapshot: Snapshot }) {
       </div>
     )
   }
-  const code = kind === 'verified' ? 'OK' : d.reason
+  const code = kind === 'verified' ? 'OK' : kind === 'passive' ? 'PASSIVE_PASSED' : d.reason
   const copy = explainReason(code)
-  const border = kind === 'verified' ? 'border-ok/60' : kind === 'retry' || kind === 'cancelled' ? 'border-warn/50' : 'border-bad/60'
+  const border = kind === 'verified' ? 'border-ok/60' : kind === 'passive' ? 'border-signal/60' : kind === 'retry' || kind === 'cancelled' ? 'border-warn/50' : 'border-bad/60'
   return (
     <div className={`rounded-md border ${border} bg-raised p-4`} role="status" aria-live="polite">
       <div className="flex items-center gap-3">
@@ -108,6 +108,7 @@ export function ResultCard({ snapshot }: { snapshot: Snapshot }) {
         <div><dt className="text-xs text-slate">Stream score</dt><dd className="font-semibold">{fmtScore(snapshot.pad.stream.median)}</dd></div>
         <div><dt className="text-xs text-slate">Capture score</dt><dd className="font-semibold">{fmtScore(snapshot.pad.capture.score)}</dd></div>
       </dl>
+      {kind === 'passive' && <p className="mt-3 flex gap-2 text-xs text-slate"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />This result comes from the models running in your browser. There was no signed capture and no certified device, so it is not a verification, and the model is uncalibrated.</p>}
       {kind === 'verified' && <p className="mt-3 flex gap-2 text-xs text-slate"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />Verified by the engine for this single attempt, with an uncalibrated model. It is not an accuracy measurement.</p>}
     </div>
   )
@@ -138,7 +139,7 @@ export function StatusLadder({ snapshot }: { snapshot: Snapshot }) {
 }
 
 export function RunControls({ label, demoScript, onStarted }: { label: string | null; demoScript?: string; onStarted?: () => void }) {
-  const { snapshot, start, cancel, busy, mode, connection } = useEngine()
+  const { snapshot, start, cancel, busy, mode, connection, modelStatus } = useEngine()
   // Cancel appears where Start was, so a double-click must not start a trial and cancel it in the same breath.
   const [justStarted, setJustStarted] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -147,6 +148,7 @@ export function RunControls({ label, demoScript, onStarted }: { label: string | 
   const running = snapshot.trial.active
   const real = mode === 'real'
   const ready = !real || (connection === 'connected' && snapshot.camera.streaming)
+  const loading = mode === 'browser' && modelStatus.state === 'loading'
   const why = !ready ? (connection !== 'connected' ? 'Waiting for the engine.' : 'Waiting for camera frames.') : null
   return (
     <div>
@@ -162,7 +164,7 @@ export function RunControls({ label, demoScript, onStarted }: { label: string | 
             onStarted?.()
           }} disabled={busy || !ready}>
             {kind === 'idle' ? <Play size={15} /> : <RotateCcw size={15} />}
-            {kind === 'idle' ? 'Start verification' : 'Run again'}
+            {loading ? 'Loading models…' : kind === 'idle' ? 'Start verification' : 'Run again'}
           </button>
         )}
       </div>

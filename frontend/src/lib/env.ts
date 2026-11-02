@@ -1,5 +1,5 @@
 /**
- * True only in the hosted, demo-only build (`npm run build:demo`). That build has no camera, no engine and no /api calls:
- * it can only play the scripted, clearly labelled simulation.
+ * True in the hosted build (`npm run build:demo`). That build has no local engine and makes no /api calls: it offers the
+ * in-browser models (everything runs on the visitor's device) and the scripted, clearly labelled demo.
  */
-export const DEMO_ONLY: boolean = import.meta.env.VITE_DEMO_ONLY === 'true'
+export const HOSTED: boolean = import.meta.env.VITE_HOSTED === 'true'

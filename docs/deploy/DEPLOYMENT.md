@@ -6,8 +6,11 @@ Nothing here has been published. These are the ready-to-use pieces and the decis
 
 | Piece | Hostable on a public site? | Why |
 |---|---|---|
-| **Hosted demo** (`npm run build:demo`) | Yes | Static files. Scripted, clearly simulated events. No camera feed, no engine, no `/api` calls, no data sent anywhere (checked: 0 API and 0 external requests). |
+| **Hosted build** (`npm run build:demo`) | Yes | Static files only. Offers **This browser** (the face models run on the visitor's own device through WebAssembly; the camera starts only on their click; nothing is uploaded or stored) and the scripted **Demo**. No server, no `/api` calls. About 19 MB: the wasm runtime (15 MB) and the three models (3.7 MB), fetched from the same origin and cached. |
 | **Real engine** (Java + camera) | No, not as a normal website | It reads a camera on the machine running it and uses an emulated device with TEST keys. Hosting it would mean sending people's face images to a server: a privacy and consent decision, and not a certified device. Run it locally with `./webcam.sh --ui`. |
+
+The hosted site needs a Content-Security-Policy that allows WebAssembly (`script-src 'self' 'wasm-unsafe-eval'`); the configs in
+this repo already include it.
 
 ## Option A: Docker (needs Docker Desktop running)
 

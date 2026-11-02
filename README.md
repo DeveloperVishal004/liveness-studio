@@ -10,8 +10,10 @@ device with a webcam mode, and a browser interface.
 
 ## Try it without installing anything
 
-The hosted demo plays scripted, clearly labelled **simulated** outcomes in your browser. It has no camera feed and no
-engine, and it sends nothing anywhere. (Link: see the repository description.)
+**https://liveness-studio.vercel.app** runs the face models **in your own browser** (WebAssembly): press Start, allow the camera,
+and the detector, the attack-score model and the motion check run on your device. Nothing is uploaded or stored. A browser has no
+certified capture device, so there is no signed capture and the best result is *Passive checks passed*, never *Verified*. A
+scripted **Demo** mode is also there.
 
 ## What is in this repository
 

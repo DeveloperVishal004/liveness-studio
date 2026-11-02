@@ -29,10 +29,15 @@ export function scenarioOf(label: string | null): Scenario | undefined {
   return SCENARIOS.find((s) => s.id === label)
 }
 
+/** A positive outcome: the engine verified, or (browser build only) the passive checks passed. Neither is an accuracy claim. */
+export function isPositive(state: string): boolean {
+  return state === 'VERIFIED' || state === 'PASSIVE_PASSED'
+}
+
 /** Did the engine's decision agree with what the experiment expected? Kept separate from the decision itself. */
 export function matchedExpectation(label: string | null, state: string): boolean | null {
   const sc = scenarioOf(label)
   if (!sc) return null
   if (state === 'CANCELLED') return null
-  return sc.expectVerified === (state === 'VERIFIED')
+  return sc.expectVerified === isPositive(state)
 }

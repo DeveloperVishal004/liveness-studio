@@ -1,6 +1,6 @@
 import type { Snapshot } from '../types'
 
-export type OutcomeKind = 'idle' | 'running' | 'verified' | 'retry' | 'rejected' | 'error' | 'cancelled'
+export type OutcomeKind = 'idle' | 'running' | 'verified' | 'passive' | 'retry' | 'rejected' | 'error' | 'cancelled'
 
 /**
  * The ONE place a decision is classified. "verified" requires the engine's own final VERIFIED state: a running camera,
@@ -14,6 +14,8 @@ export function outcomeKind(s: Snapshot | null): OutcomeKind {
   switch (state) {
     case 'VERIFIED':
       return 'verified'
+    case 'PASSIVE_PASSED': // browser build only: passive checks passed, no signed capture, NOT a verification
+      return 'passive'
     case 'RETRY_PENDING':
       return 'retry'
     case 'REJECTED_ATTACK':
@@ -29,6 +31,7 @@ export const OUTCOME_LABEL: Record<OutcomeKind, string> = {
   idle: 'Not started',
   running: 'In progress',
   verified: 'Verified',
+  passive: 'Passive checks passed',
   retry: 'Retry required',
   rejected: 'Rejected',
   error: 'Technical error',
@@ -50,6 +53,8 @@ export function sessionPhase(s: Snapshot | null): string {
       return 'Validating capture'
     case 'VERIFIED':
       return 'Verified'
+    case 'PASSIVE_PASSED':
+      return 'Passive checks passed'
     case 'RETRY_PENDING':
       return 'Retry required'
     case 'REJECTED_ATTACK':

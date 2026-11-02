@@ -9,6 +9,7 @@ export interface ReasonCopy {
 const R: Record<string, ReasonCopy> = {
   OK: { title: 'All checks passed', why: 'The passive checks passed, the signed capture was bound to this attempt, and the same face appeared throughout.', next: 'Continue with registration.' },
   NONE: { title: 'No result yet', why: 'The engine has not reached a decision.', next: 'Wait for the session to finish.' },
+  PASSIVE_PASSED: { title: 'Passive checks passed', why: 'In this browser, the face was found, the quality gates passed, the attack score stayed above the accept line, and natural facial movement was seen. A browser has no certified capture device, so there is no signed capture and this is NOT a verification.', next: 'For a full verification with a signed capture, run the engine locally with ./webcam.sh --ui.' },
   STREAM_PAD_ATTACK: { title: 'Presentation attack suspected', why: 'Several frames scored below the attack line on the passive presentation-attack check.', next: 'The attempt is rejected. A person should not retry with the same material.' },
   CAPTURE_PAD_ATTACK: { title: 'Signed capture looks like an attack', why: 'The signed image scored below the attack line on the presentation-attack check.', next: 'The attempt is rejected.' },
   WINDOW_PAD_ATTACK: { title: 'Attack-level frame around the capture', why: 'A frame near the moment of capture scored below the attack line.', next: 'The attempt is rejected.' },

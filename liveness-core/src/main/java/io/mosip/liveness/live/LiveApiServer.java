@@ -413,7 +413,7 @@ public final class LiveApiServer implements AutoCloseable {
         security(ex);
         ex.getResponseHeaders().set("Content-Security-Policy",
                 "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; "
-                        + "script-src 'self'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
+                        + "script-src 'self' 'wasm-unsafe-eval'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
         ex.sendResponseHeaders(200, "HEAD".equals(ex.getRequestMethod()) ? -1 : data.length);
         if (!"HEAD".equals(ex.getRequestMethod())) {
             try (OutputStream o = ex.getResponseBody()) {
@@ -428,6 +428,7 @@ public final class LiveApiServer implements AutoCloseable {
         if (n.endsWith(".js") || n.endsWith(".mjs")) return "text/javascript; charset=utf-8";
         if (n.endsWith(".css")) return "text/css; charset=utf-8";
         if (n.endsWith(".svg")) return "image/svg+xml";
+        if (n.endsWith(".wasm")) return "application/wasm";
         if (n.endsWith(".woff2")) return "font/woff2";
         if (n.endsWith(".woff")) return "font/woff";
         if (n.endsWith(".png")) return "image/png";

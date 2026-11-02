@@ -1,8 +1,9 @@
-import { Activity, BarChart3, FlaskConical, ScanFace, ShieldCheck, Terminal, TriangleAlert, Workflow, X, type LucideIcon } from 'lucide-react'
+import { Activity, BarChart3, FlaskConical, Info, ScanFace, ShieldCheck, Terminal, TriangleAlert, Workflow, X, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { navigate, useRoute, type Route } from '../router'
+import type { Mode } from '../types'
 import { useEngine } from '../state/engine'
-import { DEMO_ONLY } from '../lib/env'
+import { HOSTED } from '../lib/env'
 import { ConfirmDialog } from './ui'
 
 const NAV: { to: Route; label: string; icon: LucideIcon }[] = [
@@ -29,38 +30,35 @@ function Brand() {
   )
 }
 
+const MODE_LABEL: Record<Mode, string> = { real: 'Real engine', browser: 'This browser', demo: 'Demo' }
+
 function ModeSwitch() {
-  const { mode, setMode, trialRunning, hasToken } = useEngine()
-  if (DEMO_ONLY) {
-    return <span className="rounded-sm border border-warn/50 px-3 py-1.5 text-sm font-medium text-warn">Hosted demo · simulated</span>
-  }
-  const [pending, setPending] = useState<'real' | 'demo' | null>(null)
-  const choose = (m: 'real' | 'demo') => {
+  const { mode, modes, setMode, trialRunning } = useEngine()
+  const [pending, setPending] = useState<Mode | null>(null)
+  const choose = (m: Mode) => {
     if (m === mode) return
     if (trialRunning) setPending(m)
     else setMode(m)
   }
-  const btn = (m: 'real' | 'demo', label: string) => (
-    <button
-      role="radio"
-      aria-checked={mode === m}
-      onClick={() => choose(m)}
-      className={`min-h-9 px-3 text-sm font-medium transition-colors first:rounded-l-sm last:rounded-r-sm ${mode === m ? 'bg-signal text-[#04202a]' : 'text-slate hover:text-paper'}`}
-    >
-      {label}
-    </button>
-  )
   return (
     <>
       <div role="radiogroup" aria-label="Data source" className="inline-flex overflow-hidden rounded-sm border border-rule-strong">
-        {btn('real', 'Real engine')}
-        {btn('demo', 'Demo')}
+        {modes.map((m) => (
+          <button
+            key={m}
+            role="radio"
+            aria-checked={mode === m}
+            onClick={() => choose(m)}
+            className={`min-h-9 px-3 text-sm font-medium transition-colors ${mode === m ? 'bg-signal text-[#04202a]' : 'text-slate hover:text-paper'}`}
+          >
+            {MODE_LABEL[m]}
+          </button>
+        ))}
       </div>
-      {mode === 'real' && !hasToken && <span className="sr-only">No access token</span>}
       <ConfirmDialog
         open={pending !== null}
-        title={`Switch to ${pending === 'demo' ? 'demo' : 'the real engine'}?`}
-        body="A verification is running. Switching stops showing it. The engine keeps running it, and it is recorded as unfinished."
+        title={`Switch to ${pending ? MODE_LABEL[pending].toLowerCase() : ''}?`}
+        body="A verification is running. Switching stops it and records it as unfinished."
         confirmLabel="Switch"
         onCancel={() => setPending(null)}
         onConfirm={() => {
@@ -73,8 +71,21 @@ function ModeSwitch() {
 }
 
 function ConnectionChip() {
-  const { mode, connection, snapshot } = useEngine()
+  const { mode, connection, snapshot, modelStatus, camera } = useEngine()
   if (mode === 'demo') return <span className="text-sm text-slate">Scripted events, no camera or engine</span>
+  if (mode === 'browser') {
+    const t =
+      modelStatus.state === 'loading' ? { text: `Loading models… ${Math.round(modelStatus.fraction * 100)}%`, tone: 'text-slate' }
+      : modelStatus.state === 'error' ? { text: 'Models could not start', tone: 'text-bad' }
+      : camera.state.kind === 'live' ? { text: 'Camera on · analysed on this device · nothing uploaded', tone: 'text-ok' }
+      : { text: modelStatus.state === 'ready' ? 'Models ready · camera off' : 'Runs in this browser · nothing uploaded', tone: 'text-slate' }
+    return (
+      <span className={`inline-flex items-center gap-2 text-sm ${t.tone}`}>
+        <Activity size={14} aria-hidden="true" />
+        {t.text}
+      </span>
+    )
+  }
   const map: Record<string, { text: string; tone: string }> = {
     connecting: { text: 'Connecting to the local engine…', tone: 'text-slate' },
     connected: snapshot.camera.streaming ? { text: 'Engine connected · camera streaming', tone: 'text-ok' } : { text: 'Engine connected · no camera frames', tone: 'text-warn' },
@@ -99,7 +110,17 @@ function Banner() {
       <div role="note" className="flex items-start gap-3 border-b border-warn/40 bg-warn/10 px-6 py-2.5 text-sm">
         <TriangleAlert size={16} className="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
         <p>
-          <strong className="font-semibold text-warn">Demo mode.</strong> Every event on screen is simulated from fixed scripts. Nothing here is a measurement{DEMO_ONLY ? '. This hosted preview has no camera feed, no engine and sends nothing anywhere.' : ', and demo trials are kept apart from real ones.'}
+          <strong className="font-semibold text-warn">Demo mode.</strong> Every event on screen is simulated from fixed scripts. Nothing here is a measurement{HOSTED ? '. This preview uses no camera feed and no engine, and sends nothing anywhere.' : ', and demo trials are kept apart from real ones.'}
+        </p>
+      </div>
+    )
+  }
+  if (mode === 'browser') {
+    return (
+      <div role="note" className="flex items-start gap-3 border-b border-signal-dim bg-signal/5 px-6 py-2.5 text-sm">
+        <Info size={16} className="mt-0.5 shrink-0 text-signal" aria-hidden="true" />
+        <p>
+          <strong className="font-semibold text-signal">Live in your browser.</strong> The face models run on this device, and no image leaves it. A browser has no certified capture device, so there is no signed capture: the best result is <em>Passive checks passed</em>, never <em>Verified</em>. Research prototype with an uncalibrated model; one trial is an anecdote, not an accuracy figure.
         </p>
       </div>
     )
@@ -108,7 +129,7 @@ function Banner() {
     return (
       <div role="alert" className="border-b border-bad/40 bg-bad/10 px-6 py-2.5 text-sm">
         <strong className="font-semibold text-bad">Not connected to the engine.</strong>{' '}
-        {connectionMessage ?? 'Start it with ./webcam.sh --ui and open the address it prints, or switch to Demo.'}
+        {connectionMessage ?? 'Start it with ./webcam.sh --ui and open the address it prints, or switch to This browser.'}
       </div>
     )
   }

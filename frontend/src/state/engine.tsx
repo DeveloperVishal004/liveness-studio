@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api, ApiError, readToken } from '../lib/api'
-import { DEMO_ONLY } from '../lib/env'
+import { HOSTED } from '../lib/env'
+import { BrowserTrial } from '../engine/browserTrial'
+import { FramePipeline } from '../engine/pipeline'
+import { useBrowserCamera } from './camera'
 import { cancelledCopy, demoSnapshot } from '../lib/demo'
 import { DEFAULT_THRESHOLDS, idleRaw, toSnapshot } from '../lib/derive'
 import { clearRecords, loadRecords, mergeRecords, recordFromSnapshot, upsertRecord } from '../lib/trials'
@@ -17,8 +20,19 @@ export interface Notice {
   text: string
 }
 
+export interface ModelStatus {
+  state: 'idle' | 'loading' | 'ready' | 'error'
+  label: string
+  fraction: number
+  message: string | null
+}
+
 interface EngineContext {
   mode: Mode
+  /** modes this build offers (the hosted build has no local engine) */
+  modes: Mode[]
+  camera: ReturnType<typeof useBrowserCamera>
+  modelStatus: ModelStatus
   setMode: (m: Mode) => void
   hasToken: boolean
   snapshot: Snapshot
@@ -44,17 +58,19 @@ const Ctx = createContext<EngineContext | null>(null)
 const MODE_KEY = 'liveness-studio.mode'
 const idleSnapshot = (): Snapshot => toSnapshot(idleRaw(), DEFAULT_THRESHOLDS, 0, false)
 
+const MODES: Mode[] = HOSTED ? ['browser', 'demo'] : ['real', 'browser', 'demo']
+
 function initialMode(): Mode {
-  if (DEMO_ONLY) return 'demo'
   const token = readToken()
   try {
     const stored = localStorage.getItem(MODE_KEY)
-    if (stored === 'demo') return 'demo'
-    if (stored === 'real' && token) return 'real'
+    if (stored === 'demo' || stored === 'browser') return stored
+    if (stored === 'real' && token && !HOSTED) return 'real'
   } catch {
     /* default below */
   }
-  return token ? 'real' : 'demo'
+  if (HOSTED) return 'browser'
+  return token ? 'real' : 'browser'
 }
 
 export function EngineProvider({ children }: { children: ReactNode }) {
@@ -69,6 +85,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [demoScript, setDemoScript] = useState('verified')
+  const camera = useBrowserCamera()
+  const [modelStatus, setModelStatus] = useState<ModelStatus>({ state: 'idle', label: '', fraction: 0, message: null })
+  const browserTrial = useRef<BrowserTrial | null>(null)
+  const browserVideo = useRef<HTMLVideoElement | null>(null)
+  const browserCounter = useRef(loadRecords('browser').length)
   const demoRun = useRef<{ script: string; startedAt: number; number: number; label: string | null } | null>(null)
   const demoFrozen = useRef<Snapshot | null>(null)
   const demoCounter = useRef(records.filter((r) => r.source === 'demo').length)
@@ -76,8 +97,21 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const lastTrialId = useRef<string | null>(null)
   const thresholds = info?.thresholds ?? DEFAULT_THRESHOLDS
 
+  const releaseBrowserTrial = useCallback(() => {
+    browserTrial.current?.stop()
+    browserTrial.current = null
+    const v = browserVideo.current
+    if (v) {
+      v.pause()
+      v.srcObject = null
+      browserVideo.current = null
+    }
+  }, [])
+
   const setMode = useCallback((m: Mode) => {
-    if (DEMO_ONLY && m === 'real') return // the hosted build can never talk to an engine
+    if (!MODES.includes(m)) return // the hosted build can never talk to a local engine
+    releaseBrowserTrial()
+    camera.stop()
     try {
       localStorage.setItem(MODE_KEY, m)
     } catch {
@@ -91,7 +125,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     setConnection(m === 'real' ? 'connecting' : 'connected')
     setConnectionMessage(null)
     setModeState(m)
-  }, [])
+  }, [camera, releaseBrowserTrial])
 
   const say = useCallback((n: Notice) => {
     setNotice(n)
@@ -207,6 +241,37 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       try {
         if (mode === 'real') {
           await api.startTrial(label)
+        } else if (mode === 'browser') {
+          // the camera is requested only here, from the user's own click; frames never leave this device
+          browserTrial.current?.cancel() // an earlier unfinished trial is kept as cancelled, never silently dropped
+          releaseBrowserTrial()
+          const stream = await camera.ensure()
+          if (!stream) {
+            say({ kind: 'error', text: 'The camera could not be started. The reason is shown beside the picture.' })
+            return
+          }
+          setModelStatus({ state: 'loading', label: 'Starting the models', fraction: 0, message: null })
+          const { loadModels } = await import('../engine/models')
+          const models = await loadModels((l, f) => setModelStatus({ state: 'loading', label: l, fraction: f, message: null }))
+          setModelStatus({ state: 'ready', label: 'Models ready', fraction: 1, message: null })
+          const video = document.createElement('video')
+          video.muted = true
+          video.playsInline = true
+          video.srcObject = stream
+          await video.play().catch(() => undefined)
+          const waitUntil = Date.now() + 4000
+          while (video.readyState < 2 && Date.now() < waitUntil) await new Promise((r) => setTimeout(r, 50))
+          browserVideo.current = video
+          browserCounter.current += 1
+          const trial = new BrowserTrial({
+            video,
+            pipeline: new FramePipeline(models.detector, models.pads),
+            label,
+            trialNumber: browserCounter.current,
+            onSnapshot: setSnapshot,
+          })
+          browserTrial.current = trial
+          trial.start()
         } else {
           demoFrozen.current = null
           demoCounter.current += 1
@@ -214,12 +279,14 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           setSnapshot(demoSnapshot(demoRun.current.script, 0, demoRun.current.number, demoRun.current.startedAt, label))
         }
       } catch (e) {
-        say({ kind: 'error', text: e instanceof Error ? e.message : 'Could not start the trial.' })
+        const message = e instanceof Error ? e.message : 'Could not start the trial.'
+        if (mode === 'browser') setModelStatus({ state: 'error', label: '', fraction: 0, message })
+        say({ kind: 'error', text: message })
       } finally {
         setBusy(false)
       }
     },
-    [busy, mode, demoScript, say],
+    [busy, mode, demoScript, say, camera, releaseBrowserTrial],
   )
 
   const cancel = useCallback(async () => {
@@ -228,6 +295,10 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     try {
       if (mode === 'real') {
         await api.cancel()
+      } else if (mode === 'browser') {
+        const s = browserTrial.current?.cancel()
+        releaseBrowserTrial()
+        if (s) setSnapshot(s)
       } else if (demoRun.current) {
         const run = demoRun.current
         const now = Date.now()
@@ -241,15 +312,21 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     } finally {
       setBusy(false)
     }
-  }, [busy, mode, say])
+  }, [busy, mode, say, releaseBrowserTrial])
 
   const clearAllRecords = useCallback(() => {
     clearRecords(mode)
     setRecords([]) // `recorded` is kept: the trial still on screen must not be re-recorded after Clear
   }, [mode])
 
+  // a finished browser trial releases its frame loop and hidden video (the camera itself stays on until the user turns it off)
+  useEffect(() => {
+    if (mode === 'browser' && !snapshot.trial.active && browserTrial.current) releaseBrowserTrial()
+  }, [mode, snapshot, releaseBrowserTrial])
+  useEffect(() => releaseBrowserTrial, [releaseBrowserTrial])
+
   const value: EngineContext = {
-    mode, setMode, hasToken, snapshot, connection, connectionMessage, info, thresholds, records, padHistory, busy,
+    mode, modes: MODES, camera, modelStatus, setMode, hasToken, snapshot, connection, connectionMessage, info, thresholds, records, padHistory, busy,
     notice, dismissNotice: () => setNotice(null), demoScript, setDemoScript, start, cancel, clearAllRecords,
     trialRunning: snapshot.trial.active,
   }

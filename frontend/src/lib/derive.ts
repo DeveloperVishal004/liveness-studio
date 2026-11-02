@@ -56,7 +56,8 @@ export interface Raw {
   events: EventEntry[]
 }
 
-const FINISHED = ['VERIFIED', 'RETRY_PENDING', 'REJECTED_ATTACK', 'ERROR_ENGINE', 'ERROR_DEVICE', 'EXPIRED']
+/** PASSIVE_PASSED exists only in the browser build: the passive checks passed but no signed capture was possible, so it is NOT a verification. */
+const FINISHED = ['VERIFIED', 'PASSIVE_PASSED', 'RETRY_PENDING', 'REJECTED_ATTACK', 'ERROR_ENGINE', 'ERROR_DEVICE', 'EXPIRED']
 export const isFinished = (state: string) => FINISHED.includes(state) || state.startsWith('FAILED')
 export const isDecided = (state: string) => isFinished(state) || state === 'CANCELLED'
 
@@ -203,7 +204,7 @@ export function deriveStages(r: Raw, t: Thresholds): Stage[] {
 
   let ds: StageState
   if (idle || (running && !done)) ds = running ? 'active' : 'pending'
-  else if (r.state === 'VERIFIED') ds = 'passed'
+  else if (r.state === 'VERIFIED' || r.state === 'PASSIVE_PASSED') ds = 'passed'
   else if (r.state === 'RETRY_PENDING') ds = 'attention'
   else if (r.state === 'CANCELLED') ds = 'skipped'
   else ds = 'failed'

@@ -10,12 +10,18 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "preview": "vite preview",
-    "build:demo": "tsc --noEmit && vite build --mode demo --outDir dist-demo"
+    "build:demo": "tsc --noEmit && vite build --mode demo --outDir dist-demo",
+    "copy:ort": "node scripts/copy-ort.mjs",
+    "predev": "node scripts/copy-ort.mjs",
+    "prebuild": "node scripts/copy-ort.mjs",
+    "prebuild:demo": "node scripts/copy-ort.mjs",
+    "build:parity": "node scripts/copy-ort.mjs && vite build --config vite.parity.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/schibsted-grotesk": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "lucide-react": "^1.61.0",
+    "onnxruntime-web": "^1.31.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

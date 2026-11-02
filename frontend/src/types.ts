@@ -105,7 +105,8 @@ export interface EngineInfo {
   thresholds: Thresholds
 }
 
-export type Mode = 'real' | 'demo'
+/** real = the local Java engine; browser = the models running in this browser; demo = scripted and simulated */
+export type Mode = 'real' | 'browser' | 'demo'
 export type Connection = 'connecting' | 'connected' | 'error' | 'unauthorized' | 'malformed' | 'offline'
 
 /** What was staged in front of the camera. An experiment note, never a claim about what the detector found. */

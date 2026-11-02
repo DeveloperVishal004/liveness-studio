@@ -8,11 +8,12 @@ import { navigate } from '../router'
 import { SCENARIOS, scenarioOf } from '../lib/scenarios'
 import { useEngine } from '../state/engine'
 
-function OutcomeBar({ counts }: { counts: { verified: number; retry: number; rejected: number; error: number } }) {
-  const total = counts.verified + counts.retry + counts.rejected + counts.error
+function OutcomeBar({ counts }: { counts: { verified: number; passive: number; retry: number; rejected: number; error: number } }) {
+  const total = counts.verified + counts.passive + counts.retry + counts.rejected + counts.error
   if (total === 0) return null
   const seg = [
     { k: 'Verified', n: counts.verified, c: 'bg-ok' },
+    { k: 'Passive checks passed', n: counts.passive, c: 'bg-signal' },
     { k: 'Retry', n: counts.retry, c: 'bg-warn' },
     { k: 'Rejected', n: counts.rejected, c: 'bg-bad' },
     { k: 'Technical error', n: counts.error, c: 'bg-slate' },
@@ -46,6 +47,10 @@ function ScenarioTable({ rows }: { rows: Row[] }) {
   )
 }
 
+const MODE_NOUN = { real: 'real', browser: 'in-browser', demo: 'simulated' } as const
+const MODE_PHRASE = { real: 'on the real engine', browser: 'in this browser', demo: 'in demo mode' } as const
+const MODE_LONG = { real: 'from the real engine', browser: 'from the models run in this browser (never mixed with the other modes)', demo: 'in demo mode (simulated, never mixed with real trials)' } as const
+
 export default function Analytics() {
   const { records, mode, clearAllRecords } = useEngine()
   const [filter, setFilter] = useState<Filter>({ scenario: 'all', outcome: 'all', text: '' })
@@ -60,8 +65,8 @@ export default function Analytics() {
     return (
       <div>
         <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="mt-1 mb-5 max-w-2xl text-slate">Results from the trials you run, {mode === 'demo' ? 'in demo mode' : 'on the real engine'}.</p>
-        <EmptyState title="No data yet" body={`No ${mode === 'demo' ? 'simulated' : 'real'} trials have been recorded. Run a few on the Verify screen, or stage labelled scenarios in the Evaluation lab, and they appear here.`}
+        <p className="mt-1 mb-5 max-w-2xl text-slate">Results from the trials you run, {MODE_PHRASE[mode]}.</p>
+        <EmptyState title="No data yet" body={`No ${MODE_NOUN[mode]} trials have been recorded. Run a few on the Verify screen, or stage labelled scenarios in the Evaluation lab, and they appear here.`}
           action={<div className="flex gap-2"><button className="btn btn-primary" onClick={() => navigate('/')}>Go to Verify</button><button className="btn" onClick={() => navigate('/lab')}>Open the lab</button></div>} />
       </div>
     )
@@ -74,7 +79,7 @@ export default function Analytics() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
-          <p className="mt-1 max-w-2xl text-slate">Results from the trials recorded in this browser, {mode === 'demo' ? 'in demo mode (simulated, never mixed with real trials)' : 'from the real engine'}.</p>
+          <p className="mt-1 max-w-2xl text-slate">Results from the trials recorded in this browser, {MODE_LONG[mode]}.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-sm text-slate"><input type="checkbox" checked={includeEvents} onChange={(e) => setIncludeEvents(e.target.checked)} /> Include event timelines in JSON</label>
@@ -105,7 +110,7 @@ export default function Analytics() {
         </Panel>
         <Panel title="Acceptance by what you staged" aside="labelled trials only">
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Stat label="Genuine accepted" value={fmtPct(g.accepted, g.n)} hint={`${g.accepted} of ${g.n} · rejects and retries are false rejects`} />
+            <Stat label="Genuine accepted" value={fmtPct(g.accepted, g.n)} hint={`${g.accepted} of ${g.n} · rejects and retries are false rejects${mode === 'browser' ? ' · accepted = passive checks passed' : ''}`} />
             <Stat label="Attacks accepted" value={fmtPct(a.accepted, a.n)} hint={`${a.accepted} of ${a.n} · photo, replay, subject change`} />
             <Stat label="Condition trials accepted" value={fmtPct(sum.condition.accepted, sum.condition.n)} hint={`${sum.condition.accepted} of ${sum.condition.n} · light, blur, no face, multiple`} />
           </dl>
@@ -161,7 +166,7 @@ export default function Analytics() {
         )}
         <p className="mt-3 text-xs text-faint">Exports contain the fields above only: no camera frames, face embeddings or personal data. The CSV and JSON follow the current filters.</p>
       </Panel>
-      <ConfirmDialog open={confirmClear} title="Clear recorded trials?" body={`This removes all ${records.length} ${mode === 'demo' ? 'simulated' : 'real'} trials stored in this browser. It cannot be undone. Export first if you need them.`} confirmLabel="Clear trials" onCancel={() => setConfirmClear(false)} onConfirm={() => { clearAllRecords(); setConfirmClear(false) }} />
+      <ConfirmDialog open={confirmClear} title="Clear recorded trials?" body={`This removes all ${records.length} ${MODE_NOUN[mode]} trials stored in this browser. It cannot be undone. Export first if you need them.`} confirmLabel="Clear trials" onCancel={() => setConfirmClear(false)} onConfirm={() => { clearAllRecords(); setConfirmClear(false) }} />
     </div>
   )
 }

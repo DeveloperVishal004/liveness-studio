@@ -45,11 +45,11 @@ export const checkWord = (s: CheckState) => CHECK_META[s].word
 export const checkTone = (s: CheckState) => CHECK_META[s].tone
 
 export const OUTCOME_TONE: Record<OutcomeKind, string> = {
-  idle: 'text-slate', running: 'text-signal', verified: 'text-ok', retry: 'text-warn', rejected: 'text-bad', error: 'text-bad', cancelled: 'text-slate',
+  idle: 'text-slate', running: 'text-signal', verified: 'text-ok', passive: 'text-signal', retry: 'text-warn', rejected: 'text-bad', error: 'text-bad', cancelled: 'text-slate',
 }
 
 export function OutcomePill({ kind }: { kind: OutcomeKind }) {
-  const dot = kind === 'verified' ? 'bg-ok' : kind === 'retry' ? 'bg-warn' : kind === 'rejected' || kind === 'error' ? 'bg-bad' : kind === 'running' ? 'bg-signal' : 'bg-faint'
+  const dot = kind === 'verified' ? 'bg-ok' : kind === 'passive' ? 'bg-signal' : kind === 'retry' ? 'bg-warn' : kind === 'rejected' || kind === 'error' ? 'bg-bad' : kind === 'running' ? 'bg-signal' : 'bg-faint'
   return (
     <span className={`inline-flex items-center gap-2 text-sm font-medium ${OUTCOME_TONE[kind]}`}>
       <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden="true" />

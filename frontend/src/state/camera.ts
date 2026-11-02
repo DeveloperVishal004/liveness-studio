@@ -48,10 +48,10 @@ export function useBrowserCamera() {
   }, [release])
 
   const start = useCallback(
-    async (id?: string) => {
+    async (id?: string): Promise<MediaStream | null> => {
       if (!navigator.mediaDevices?.getUserMedia) {
         setState({ kind: 'unavailable' })
-        return
+        return null
       }
       const gen = ++generation.current
       release()
@@ -64,7 +64,7 @@ export function useBrowserCamera() {
         })
         if (gen !== generation.current) {
           stream.getTracks().forEach((t) => t.stop()) // stopped or restarted while the prompt was open
-          return
+          return null
         }
         streamRef.current = stream
         const track = stream.getVideoTracks()[0]
@@ -76,13 +76,15 @@ export function useBrowserCamera() {
         })
         setState({ kind: 'live', stream, label: track?.label || 'Camera' })
         void refreshDevices()
+        return stream
       } catch (e) {
-        if (gen !== generation.current) return
+        if (gen !== generation.current) return null
         const name = e instanceof DOMException ? e.name : ''
         if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') setState({ kind: 'denied' })
         else if (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError') setState({ kind: 'unavailable' })
         else if (name === 'NotReadableError' || name === 'TrackStartError') setState({ kind: 'busy' })
         else setState({ kind: 'error', message: e instanceof Error ? e.message : 'The camera could not be started.' })
+        return null
       }
     },
     [deviceId, release, refreshDevices],
@@ -103,5 +105,12 @@ export function useBrowserCamera() {
     [],
   )
 
-  return { state, devices, deviceId, setDeviceId, start, stop }
+  /** Reuses a live stream; otherwise asks for the camera (call from a user action). */
+  const ensure = useCallback(async (): Promise<MediaStream | null> => {
+    const s = streamRef.current
+    if (s && s.getVideoTracks().some((t) => t.readyState === 'live')) return s
+    return start()
+  }, [start])
+
+  return { state, devices, deviceId, setDeviceId, start, stop, ensure }
 }

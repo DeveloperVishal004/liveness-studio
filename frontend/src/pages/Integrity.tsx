@@ -16,6 +16,11 @@ export default function Integrity() {
         <ShieldAlert size={18} className="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
         <p><strong className="font-semibold">A valid signature does not prove the person was live.</strong> It shows the capture came intact from the trusted device, was fresh, and was not replayed. A photo or a screen held up to a genuine, trusted camera is still signed. Telling those apart is the job of the presentation-attack checks, shown on the Pipeline screen.</p>
       </div>
+      {mode === 'browser' && (
+        <p role="note" className="mb-5 rounded-md border border-signal-dim bg-signal/5 px-4 py-3 text-sm">
+          <strong className="font-semibold text-signal">Not available in the browser.</strong> These checks apply to a signed capture from a certified device. A browser camera produces no signature, certificate, nonce or device identity, so every check below is shown as unavailable rather than passed. Run the engine locally (<span className="code">./webcam.sh --ui</span>) to see them run.
+        </p>
+      )}
       <Panel title={s.trial.number > 0 ? `Trial ${s.trial.number}` : 'No verification has run'} aside={mode === 'demo' ? 'Simulated' : `${counts['passed'] ?? 0} passed · ${counts['failed'] ?? 0} failed · ${counts['not_checked'] ?? 0} not yet checked`}>
         <IntegrityList checks={s.integrity} />
       </Panel>

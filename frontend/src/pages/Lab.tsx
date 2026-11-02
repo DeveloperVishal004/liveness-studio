@@ -83,7 +83,7 @@ export default function Lab() {
             )}
           </Panel>
 
-          <Panel title="Recent labelled trials" aside={mode === 'demo' ? 'Simulated' : 'Real engine'}>
+          <Panel title="Recent labelled trials" aside={mode === 'demo' ? 'Simulated' : mode === 'browser' ? 'In this browser' : 'Real engine'}>
             {labelled.length === 0 ? (
               <EmptyState title="No labelled trials yet" body="Run a scenario above. Each finished run is saved here and counted in Analytics." />
             ) : (

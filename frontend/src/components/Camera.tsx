@@ -5,7 +5,7 @@ import { frameGuidance } from '../lib/copy'
 import { fmtScore } from '../lib/format'
 import { outcomeKind, OUTCOME_LABEL } from '../lib/outcome'
 import { useEngine, type PadPoint } from '../state/engine'
-import { useBrowserCamera, type CameraState } from '../state/camera'
+import type { CameraState } from '../state/camera'
 import type { Thresholds } from '../types'
 import { OUTCOME_TONE } from './ui'
 
@@ -25,10 +25,9 @@ function Layer({ name, value, tone }: { name: string; value: string; tone: strin
   )
 }
 
-/** The engine's own camera feed (real mode) or an optional browser positioning preview / scripted placeholder (demo mode). */
+/** What each mode shows: the engine's own feed (real), the visitor's camera analysed in this browser (browser), or a scripted placeholder (demo). */
 export function CameraStage({ compact = false }: { compact?: boolean }) {
-  const { mode, snapshot, connection } = useEngine()
-  const cam = useBrowserCamera()
+  const { mode, snapshot, connection, camera: cam, modelStatus } = useEngine()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [imgFailed, setImgFailed] = useState(false)
   const [retry, setRetry] = useState(0)
@@ -41,7 +40,7 @@ export function CameraStage({ compact = false }: { compact?: boolean }) {
     setImgFailed(false)
   }, [mode, connection, retry])
   useEffect(() => {
-    if (mode === 'real') cam.stop() // the browser preview belongs to demo mode only
+    if (mode === 'real') cam.stop() // the local engine has its own camera; the browser camera belongs to the other modes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
@@ -53,8 +52,9 @@ export function CameraStage({ compact = false }: { compact?: boolean }) {
   const showBox = f.faceBox && f.faceBox.length >= 4 && snapshot.trial.active
   const boxColor = f.eligible ? 'var(--color-signal)' : 'var(--color-warn)'
   const brackets = () => `M28 ${28 + 46}V28H${28 + 46} M${W - 28 - 46} 28H${W - 28}V${28 + 46} M${W - 28} ${H - 28 - 46}V${H - 28}H${W - 28 - 46} M${28 + 46} ${H - 28}H28V${H - 28 - 46}`
+  const mirror = mode !== 'real' && !!live // selfie view: the picture and the engine's overlay are mirrored together
 
-  let media: React.ReactNode
+  let media: React.ReactNode = null
   let overlayNote: React.ReactNode = null
   if (mode === 'real') {
     const url = connection === 'connected' ? previewUrl() : null
@@ -69,24 +69,37 @@ export function CameraStage({ compact = false }: { compact?: boolean }) {
       if (!snapshot.camera.streaming) overlayNote = <Notice icon={<CameraOff size={22} />} title="Camera feed stopped" body="No new frames have arrived for a few seconds. The camera may be disconnected or in use elsewhere." compact />
     }
   } else if (live) {
-    media = <video ref={videoRef} autoPlay muted playsInline aria-label="Browser camera preview (positioning only)" className="absolute inset-0 h-full w-full -scale-x-100 object-contain" />
+    media = <video ref={videoRef} autoPlay muted playsInline aria-label={mode === 'browser' ? 'Your camera, analysed in this browser' : 'Browser camera preview (positioning only)'} className="absolute inset-0 h-full w-full object-contain" />
   } else {
     const m = CAM_MESSAGE[cam.state.kind]
+    const title = m ? m.title : mode === 'browser' ? 'Camera is off' : 'Scripted demo, no camera'
+    const body = m
+      ? m.body
+      : mode === 'browser'
+        ? 'Press Start verification. Your camera turns on in this browser and the models run on this device. Nothing is uploaded.'
+        : 'The numbers and stages are simulated. Turn on the optional preview below to check how your face sits in the guide; it is not analysed.'
     media = (
       <div className="absolute inset-0 flex items-end justify-center bg-[radial-gradient(ellipse_at_center,#15233b,#0a1322_70%)] pb-5">
         <div className="max-w-md rounded-sm bg-abyss/85 px-4 py-2 text-center">
-          <p className="text-sm text-paper">{m ? m.title : 'Scripted demo, no camera'}</p>
-          {!compact && <p className="mt-0.5 text-xs text-slate">{m ? m.body : 'The numbers and stages are simulated. Turn on the optional preview below to check how your face sits in the guide; it is not analysed.'}</p>}
+          <p className="text-sm text-paper">{title}</p>
+          {!compact && <p className="mt-0.5 text-xs text-slate">{body}</p>}
         </div>
       </div>
     )
+  }
+  if (mode === 'browser' && modelStatus.state === 'loading') {
+    overlayNote = <Notice icon={<RefreshCw size={22} className="animate-spin" />} title="Loading the models" body={`${modelStatus.label || 'Starting'} (${Math.round(modelStatus.fraction * 100)}% overall). About 4 MB to download the first time, then cached. Each model is checked against its pinned hash.`} />
+  } else if (mode === 'browser' && modelStatus.state === 'error' && !snapshot.trial.active) {
+    overlayNote = <Notice icon={<CameraOff size={22} />} title="The models could not start" body={modelStatus.message ?? 'Unknown error.'} />
   }
 
   const trialOn = snapshot.trial.number > 0
   const cameraLayer =
     mode === 'real'
       ? snapshot.camera.streaming ? { v: 'Streaming', t: 'text-ok' } : snapshot.camera.framesReceived > 0 ? { v: 'Stopped', t: 'text-warn' } : { v: 'No frames', t: 'text-warn' }
-      : live ? { v: 'Preview only', t: 'text-signal' } : { v: 'Simulated', t: 'text-slate' }
+      : mode === 'browser'
+        ? live ? { v: 'On this device', t: 'text-ok' } : { v: 'Off', t: 'text-slate' }
+        : live ? { v: 'Preview only', t: 'text-signal' } : { v: 'Simulated', t: 'text-slate' }
   const faceLayer = !trialOn ? { v: '—', t: 'text-slate' } : f.faceCount === 1 ? (f.eligible ? { v: 'One face, usable', t: 'text-ok' } : { v: 'One face, not usable', t: 'text-warn' }) : f.faceCount === 0 ? { v: 'No face', t: 'text-warn' } : f.faceCount > 1 ? { v: `${f.faceCount} faces`, t: 'text-warn' } : { v: '—', t: 'text-slate' }
   const padLayer = !trialOn || snapshot.pad.stream.median == null ? { v: '—', t: 'text-slate' } : { v: `median ${fmtScore(snapshot.pad.stream.median)}`, t: 'text-paper' }
   const decLayer = { v: OUTCOME_LABEL[kind], t: OUTCOME_TONE[kind] }
@@ -94,20 +107,23 @@ export function CameraStage({ compact = false }: { compact?: boolean }) {
   return (
     <div>
       <div className={`relative overflow-hidden rounded-lg border border-rule bg-black ${compact ? 'aspect-[16/10]' : 'aspect-video'}`}>
-        {media}
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
-          <path d={brackets()} stroke={snapshot.trial.active ? 'var(--color-signal)' : 'rgb(140 157 181 / 0.7)'} strokeWidth="3" fill="none" strokeLinecap="round" />
-          <ellipse cx={W / 2} cy={H / 2} rx={W * 0.16} ry={H * 0.36} stroke="rgb(230 237 247 / 0.45)" strokeWidth="2" strokeDasharray="6 8" fill="none" />
-          {showBox && f.faceBox && <rect x={f.faceBox[0]} y={f.faceBox[1]} width={f.faceBox[2]} height={f.faceBox[3]} stroke={boxColor} strokeWidth="3" fill="none" rx="4" />}
-        </svg>
+        <div className={`absolute inset-0 ${mirror ? '-scale-x-100' : ''}`}>
+          {media}
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+            <path d={brackets()} stroke={snapshot.trial.active ? 'var(--color-signal)' : 'rgb(140 157 181 / 0.7)'} strokeWidth="3" fill="none" strokeLinecap="round" />
+            <ellipse cx={W / 2} cy={H / 2} rx={W * 0.16} ry={H * 0.36} stroke="rgb(230 237 247 / 0.45)" strokeWidth="2" strokeDasharray="6 8" fill="none" />
+            {showBox && f.faceBox && <rect x={f.faceBox[0]} y={f.faceBox[1]} width={f.faceBox[2]} height={f.faceBox[3]} stroke={boxColor} strokeWidth="3" fill="none" rx="4" />}
+          </svg>
+        </div>
         {overlayNote && <div className="absolute inset-0 grid place-items-center bg-abyss/80 p-4">{overlayNote}</div>}
         {mode === 'demo' && <span className="absolute left-3 top-3 rounded-sm bg-warn/90 px-2 py-0.5 text-xs font-semibold text-[#2a1c00]">Simulated</span>}
+        {mode === 'browser' && live && <span className="absolute left-3 top-3 rounded-sm bg-abyss/85 px-2 py-0.5 text-xs font-medium text-signal">Live · analysed on this device</span>}
       </div>
       <div className={`mt-3 grid grid-cols-2 gap-y-2 rounded-md border border-rule bg-deck py-2 ${compact ? '' : 'sm:grid-cols-4'}`} role="group" aria-label="What each layer reports">
         <Layer name="Camera" value={cameraLayer.v} tone={cameraLayer.t} />
         <Layer name="Face detection" value={faceLayer.v} tone={faceLayer.t} />
         <Layer name="Attack assessment" value={padLayer.v} tone={padLayer.t} />
-        <Layer name="Engine decision" value={decLayer.v} tone={decLayer.t} />
+        <Layer name="Decision" value={decLayer.v} tone={decLayer.t} />
       </div>
       <p className={`mt-2 text-sm ${guide.tone === 'warn' && snapshot.trial.active ? 'text-warn' : 'text-slate'}`} aria-live="polite">
         {snapshot.trial.active ? guide.text : trialOn ? 'The trial has finished. The result is shown beside the camera.' : 'Press Start verification when you are in position. Centre your face in the guide.'}
@@ -117,7 +133,7 @@ export function CameraStage({ compact = false }: { compact?: boolean }) {
           {live ? (
             <button className="btn" onClick={cam.stop}><CameraOff size={15} /> Turn preview off</button>
           ) : (
-            <button className="btn" onClick={() => cam.start()} disabled={cam.state.kind === 'requesting'}>
+            <button className="btn" onClick={() => void cam.start()} disabled={cam.state.kind === 'requesting'}>
               <CameraIcon size={15} /> {cam.state.kind === 'requesting' ? 'Waiting for permission…' : 'Use my camera for positioning'}
             </button>
           )}
@@ -131,6 +147,21 @@ export function CameraStage({ compact = false }: { compact?: boolean }) {
             </label>
           )}
           <span className="text-xs text-faint">Positioning only: the picture is not analysed, stored or sent anywhere, and a browser camera has none of the trust properties of a certified capture device.</span>
+        </div>
+      )}
+      {mode === 'browser' && !compact && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {live && !snapshot.trial.active && <button className="btn" onClick={cam.stop}><CameraOff size={15} /> Turn camera off</button>}
+          {cam.devices.length > 1 && !snapshot.trial.active && (
+            <label className="flex items-center gap-2 text-sm text-slate">
+              Camera
+              <select className="field" value={cam.deviceId} onChange={(e) => { cam.setDeviceId(e.target.value); if (live) void cam.start(e.target.value) }}>
+                <option value="">Default</option>
+                {cam.devices.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+              </select>
+            </label>
+          )}
+          <span className="text-xs text-faint">The face models run on this device. Nothing is uploaded or stored. A browser camera is not a certified capture device, so there is no signed capture and the best result is “Passive checks passed”.</span>
         </div>
       )}
       {mode === 'real' && !compact && (
