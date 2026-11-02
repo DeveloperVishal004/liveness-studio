@@ -4,10 +4,9 @@
   "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "npm run build:demo",
   "outputDirectory": "dist-demo",
-  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon.svg).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
