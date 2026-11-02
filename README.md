@@ -15,6 +15,9 @@ and the detector, the attack-score model and the motion check run on your device
 certified capture device, so there is no signed capture and the best result is *Passive checks passed*, never *Verified*. A
 scripted **Demo** mode is also there.
 
+**Full documentation:** [`docs/PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md) (what it is, how decisions are made,
+security model, API, testing, deployment, limits, troubleshooting, glossary).
+
 ## What is in this repository
 
 | Path | What it is |
